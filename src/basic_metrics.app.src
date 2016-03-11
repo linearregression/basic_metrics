@@ -6,8 +6,9 @@
   {applications, [
                   kernel,
                   stdlib,
+		  lager,
                   exometer_core,
-                  exometer,
+ %                 exometer,
                   recon
                  ]},
   {mod, { basic_metrics_app, []}},

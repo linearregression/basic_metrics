@@ -1,0 +1,4 @@
+%% encoding: UTF-8
+{application,basic_metrics}.
+{modules,[basic_metrics,basic_metrics_app,basic_metrics_periodic,
+          basic_metrics_riak,basic_metrics_sup]}.

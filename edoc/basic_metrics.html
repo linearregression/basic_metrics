@@ -1,0 +1,131 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Module basic_metrics</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module basic_metrics</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Basic VM metrics.
+
+
+<h2><a name="description">Description</a></h2>Basic VM metrics.
+   Simple wrapper for the <code>exometer</code> metrics application to export useful
+   metrics from an Erlang system.
+   Handles setting up Graphite reporting and dynamic addition, subscription
+   and updates for several exometer entry types.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#counter-2">counter/2</a></td><td>Update a counter statistic.</td></tr>
+<tr><td valign="top"><a href="#fast_counter-2">fast_counter/2</a></td><td>Update a fast counter statistic.</td></tr>
+<tr><td valign="top"><a href="#gauge-2">gauge/2</a></td><td>Update a gauge statistic.</td></tr>
+<tr><td valign="top"><a href="#histogram-2">histogram/2</a></td><td>Update a histogram statistic.</td></tr>
+<tr><td valign="top"><a href="#init-0">init/0</a></td><td>Initialize exometer with Graphite reporting.</td></tr>
+<tr><td valign="top"><a href="#spiral-1">spiral/1</a></td><td>Update a spiral statistic.</td></tr>
+<tr><td valign="top"><a href="#vm-0">vm/0</a></td><td>Initialize basic VM metrics.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="counter-2">counter/2</a></h3>
+<div class="spec">
+<p><tt>counter(Name::<a href="/opt/opensource/basic_metrics/_build/default/lib/exometer_core/doc/exometer.html#type-name">exometer:name()</a>, Value::number()) -&gt; ok</tt><br></p>
+</div><p>Update a counter statistic.
+  If an exometer entry is not already present, create a counter and
+  subscribe to it with <code>exometer_report_graphite</code>.</p>
+
+<h3 class="function"><a name="fast_counter-2">fast_counter/2</a></h3>
+<div class="spec">
+<p><tt>fast_counter(Name, Value) -&gt; any()</tt></p>
+</div><p>Update a fast counter statistic.
+  If an exometer entry is not already present, create a fast counter and
+  subscribe to it with exometer_report_graphite.</p>
+
+<h3 class="function"><a name="gauge-2">gauge/2</a></h3>
+<div class="spec">
+<p><tt>gauge(Name::<a href="/opt/opensource/basic_metrics/_build/default/lib/exometer_core/doc/exometer.html#type-name">exometer:name()</a>, Value::number()) -&gt; ok</tt><br></p>
+</div><p>Update a gauge statistic.
+  If an exometer entry is not already present, create a gauge and
+  subscribe to it with <code>exometer_report_graphite</code>.</p>
+
+<h3 class="function"><a name="histogram-2">histogram/2</a></h3>
+<div class="spec">
+<p><tt>histogram(Name::<a href="/opt/opensource/basic_metrics/_build/default/lib/exometer_core/doc/exometer.html#type-name">exometer:name()</a>, Value::number()) -&gt; ok</tt><br></p>
+</div><p>Update a histogram statistic.
+  If an exometer entry is not already present, create a histogram and
+  subscribe to it with exometer_report_graphite.</p>
+
+<h3 class="function"><a name="init-0">init/0</a></h3>
+<div class="spec">
+<p><tt>init() -&gt; ok</tt><br></p>
+</div><p>Initialize exometer with Graphite reporting.</p>
+
+<h3 class="function"><a name="spiral-1">spiral/1</a></h3>
+<div class="spec">
+<p><tt>spiral(Name) -&gt; any()</tt></p>
+</div><p>Update a spiral statistic.
+  If an exometer entry is not already present, create a spiral and
+  subscribe to it with exometer_report_graphite.</p>
+
+<h3 class="function"><a name="vm-0">vm/0</a></h3>
+<div class="spec">
+<p><tt>vm() -&gt; ok</tt><br></p>
+</div><p>Initialize basic VM metrics.
+  The following metrics are exported:
+  <ul>
+  <li>erlang:memory/1:
+      <code>erlang.memory.{total, processes, system, atom, binary, ets}</code>
+      <p>VM memory.
+      <ul>
+       <li>total = processes + system.</li>
+       <li>processes = used by Erlang processes, their stacks and heaps.</li>
+       <li>system = used but not directly related to any Erlang process.</li>
+       <li>atom = allocated for atoms (included in system).</li>
+       <li>binary = allocated for binaries (included in system).</li>
+       <li>ets = allocated for ETS tables (included in system).</li>
+      </ul>
+      </p>
+  </li>
+  <li>recon_alloc:memory/1:
+      <code>recon.alloc.memory.{used, allocated, unused, usage}</code>
+      <p>Memory actively used by the VM, allocated (should ~match OS
+      allocation), unused (i.e. allocated - used), and usage
+      (used / allocated).</p>
+  </li>
+  <li>recon_alloc:memory(allocated_types):
+      <code>recon.alloc.memory.types.{binary_alloc, ...}</code>
+      <p>Memory reserved by the VM, grouped into different utility
+      allocators.</p>
+  </li>
+  <li>erlang:system_info/1:
+      <code>erlang.system.{process_count, port_count}</code>
+      <p>System process and port counts.
+      <ul>
+        <li>process_count = current number of processes.</li>
+        <li>port_count = current number of ports.</li>
+      </ul>
+      </p>
+  </li>
+  <li>erlang:statistics/1:
+      <code>erlang.statistics.run_queue</code>,
+      <code>erlang.gc.{total_coll, rec_wrd}</code>,
+      <code>erlang.io.{input, output}</code>
+      <p>VM statistics.
+      <ul>
+       <li>The number of processes that are ready to run on all available run
+           queues.</li>
+       <li>Total garbage collections and words reclaimed.</li>
+       <li>Total bytes input and output through ports.</li>
+      </ul>
+      </p>
+  </li>
+  </ul></p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Mar 10 2016, 16:03:47.</i></p>
+</body>
+</html>

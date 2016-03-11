@@ -15,19 +15,19 @@
 %% Typically this will be your application or service name.
 {mapping, "basic_metrics.prefix", "basic_metrics.prefix", [
   {datatype, string},
-  {default, "basic"}
+  {default, "basicwawa"}
 ]}.
 
 %% @doc Carbon endpoint hostname to report metrics to.
-{mapping, "basic_metrics.host", "basic_metrics.host", [
+{mapping, "basic_metrics.host_ip", "basic_metrics.host_ip", [
   {datatype, string},
-  {default, "carbon.hostedgraphite.com"},
+  {default, "9.9.9.9"},
   hidden
 ]}.
 
 %% @doc Carbon endpoint port to report metrics to.
 {mapping, "basic_metrics.port", "basic_metrics.port", [
   {datatype, integer},
-  {default, 2003},
+  {default, 6666},
   hidden
 ]}.

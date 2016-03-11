@@ -4,79 +4,78 @@
 %%% Handles setting up Graphite reporting and dynamic addition, subscription
 %%% and updates for several exometer entry types.
 -module(basic_metrics).
--export([init/0, counter/2, gauge/2, histogram/2, vm/0]).
+-export([init/0, counter/2, gauge/2, histogram/2, fast_counter/2, spiral/1, vm/0]).
 -ignore_xref([init/0, counter/2, gauge/2, histogram/2, vm/0]).
 
--define(INTERVAL, 5000).
+-define(REPORT_INTERVAL, 5000).
+-define(DEFAULT_WINDOW, 1000).
+-define(APPLICATION, ?MODULE).
 
 %% @doc Update a counter statistic.
 %% If an exometer entry is not already present, create a counter and
-%% subscribe to it with `exometer_report_graphite'.
+%% subscribe to it with `(exometer_report_graphite_udp'.
 -spec counter(Name :: exometer:name(), Value :: number()) ->
     ok.
 counter(Name, Value) ->
-    case exometer:update(Name, Value) of
-        {error, not_found} ->
-            exometer_admin:ensure(Name, counter, []),
-            exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer:update_or_create(Name, Value, counter, []),
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                       Name, [value],
-                                      ?INTERVAL, [], true),
-            exometer:update(Name, Value);
-        ok ->
-            ok
-    end.
+                                      ?REPORT_INTERVAL, [], true).
 
 %% @doc Update a gauge statistic.
 %% If an exometer entry is not already present, create a gauge and
-%% subscribe to it with `exometer_report_graphite'.
+%% subscribe to it with `(exometer_report_graphite_udp'.
 -spec gauge(Name :: exometer:name(), Value :: number()) ->
     ok.
-gauge(Name, Value) ->
-    case exometer:update(Name, Value) of
-        {error, not_found} ->
-            exometer_admin:ensure(Name, gauge, []),
-            exometer_report:subscribe(exometer_report_graphite,
+gauge(Name, Value) -> 
+    ok = exometer:update_or_create(Name, Value, gauge, []),
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                       Name, [value],
-                                      ?INTERVAL, [], true),
-            exometer:update(Name, Value);
-        ok ->
-            ok
-    end.
+                                      ?REPORT_INTERVAL, [], true).
 
 %% @doc Update a histogram statistic.
 %% If an exometer entry is not already present, create a histogram and
-%% subscribe to it with exometer_report_graphite.
+%% subscribe to it with (exometer_report_graphite_udp.
 -spec histogram(Name :: exometer:name(), Value :: number()) ->
     ok.
 histogram(Name, Value) ->
-    case exometer:update(Name, Value) of
-        {error, not_found} ->
-            exometer_admin:ensure(Name, histogram,
-                                  [{module, exometer_histogram}]),
-            exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer:update_or_create(Name, Value, histogram, []),
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                       Name, [mean, 50, 75, 95, 99],
-                                      ?INTERVAL, [], true),
-            exometer:update(Name, Value);
-        ok ->
-            ok
-    end.
+                                      ?REPORT_INTERVAL, [], true).
+
+
+%% @doc Update a fast counter statistic.
+%% If an exometer entry is not already present, create a fast counter and
+%% subscribe to it with (exometer_report_graphite_udp.
+fast_counter(Name, Value) ->
+    ok = exometer:update_or_create(Name, Value, fast_counter, []),
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
+                                      Name, [value],
+                                      ?REPORT_INTERVAL, [], true).
+
+%% @doc Update a spiral statistic.
+%% If an exometer entry is not already present, create a spiral and
+%% subscribe to it with (exometer_report_graphite_udp.
+spiral(Name) ->
+    Opts = [{time_span, ?DEFAULT_WINDOW}],
+    ok = exometer:update_or_create(Name, 1, spiral, Opts),
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
+                                      Name, [value],
+                                      ?REPORT_INTERVAL, [], true).
 
 %% @doc Initialize exometer with Graphite reporting.
 -spec init() ->
     ok.
 init() ->
-    {ok, Name} = inet:gethostname(),
-    Host = application:get_env(basic_metrics, host,
-                               "carbon.hostedgraphite.com"),
-    Port = application:get_env(basic_metrics, port, 2003),
-    Key = application:get_env(basic_metrics, key, ""),
-    Prefix = application:get_env(basic_metrics, prefix, "basic"),
-    ReportOptions = [{connect_timeout, 5000},
-                     {prefix, Prefix ++ "." ++ Name},
-                     {host, Host},
-                     {port, Port},
-                     {api_key, Key}],
-    ok = exometer_report:add_reporter(exometer_report_graphite, ReportOptions).
+    ok = lager:notice("action=init"),
+    DefaultReporter = application:get_env(?APPLICATION, default_metrics_reporter, undefined),
+    Opts = application:get_env(exometer_core, report, []),
+    ReportersOpts = get_opt(reporters, Opts, []),
+    DefaultReporterOpt = get_opt(DefaultReporter, ReportersOpts), 
+    DefaultReporterOpt1 = lists:flatten(DefaultReporterOpt),
+    ok = add_reporter(exometer_report:add_reporter(DefaultReporter, DefaultReporterOpt1)),
+    ok.
 
 %% @doc Initialize basic VM metrics.
 %% The following metrics are exported:
@@ -135,18 +134,18 @@ vm() ->
     ok = exometer:new([erlang, memory],
                       {function, erlang, memory, ['$dp'], value,
                        [total, processes, system, atom, binary, ets]}),
-    ok = exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                    [erlang, memory],
                                    [total, processes, system, atom, binary,
-                                    ets], ?INTERVAL, [], true),
+                                    ets], ?REPORT_INTERVAL, [], true),
 
     % Recon alloc.
     ok = exometer:new([recon, alloc],
                       {function, recon_alloc, memory, ['$dp'], value,
                        [used, allocated, unused, usage]}),
-    ok = exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                    [recon, alloc],
-                                   [used, allocated, unused, usage], ?INTERVAL,
+                                   [used, allocated, unused, usage], ?REPORT_INTERVAL,
                                    [], true),
 
     % Recon alloc types.
@@ -156,40 +155,56 @@ vm() ->
                        [binary_alloc, driver_alloc, eheap_alloc,
                         ets_alloc, fix_alloc, ll_alloc, sl_alloc,
                         std_alloc, temp_alloc]}),
-    ok = exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                    [recon, alloc, types],
                                    [binary_alloc, driver_alloc, eheap_alloc,
                                     ets_alloc, fix_alloc, ll_alloc, sl_alloc,
-                                    std_alloc, temp_alloc], ?INTERVAL,
+                                    std_alloc, temp_alloc], ?REPORT_INTERVAL,
                                    [], true),
 
     % System process & port counts.
     ok = exometer:new([erlang, system],
                       {function, erlang, system_info, ['$dp'], value,
                        [process_count, port_count]}),
-    ok = exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                    [erlang, system],
-                                   [process_count, port_count], ?INTERVAL,
+                                   [process_count, port_count], ?REPORT_INTERVAL,
                                    [], true),
 
     % VM statistics.
     ok = exometer:new([erlang, statistics],
                       {function, erlang, statistics, ['$dp'], value,
                        [run_queue]}),
-    ok = exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                    [erlang, statistics],
-                                   [run_queue], ?INTERVAL, [], true),
+                                   [run_queue], ?REPORT_INTERVAL, [], true),
 
     ok = exometer:new([erlang, gc],
                       {function, erlang, statistics, [garbage_collection],
                        match, {total_coll, rec_wrd, '_'}}),
-    ok = exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                    [erlang, gc],
-                                   [total_coll, rec_wrd], ?INTERVAL, [], true),
+                                   [total_coll, rec_wrd], ?REPORT_INTERVAL, [], true),
 
     ok = exometer:new([erlang, io],
                       {function, erlang, statistics, [io], match,
                        {{'_', input}, {'_', output}}}),
-    ok = exometer_report:subscribe(exometer_report_graphite,
+    ok = exometer_report:subscribe(exometer_report_graphite_udp,
                                    [erlang, io],
-                                   [input, output], ?INTERVAL, [], true).
+                                   [input, output], ?REPORT_INTERVAL, [], true).
+
+get_opt(K, Opts) ->
+    case lists:keyfind(K, 1, Opts) of
+        {_, V} -> V;
+        false  -> error({required, K})
+    end.
+
+get_opt(K, Opts, Default) ->
+    exometer_util:get_opt(K, Opts, Default).
+
+add_reporter(ok) ->
+    ok;
+add_reporter({error, already_running}) ->
+    ok;
+add_reporter({error, E}) ->
+    {error, E}.

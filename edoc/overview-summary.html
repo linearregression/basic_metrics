@@ -1,0 +1,94 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>The basic_metrics application</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<h1>The basic_metrics application</h1>
+<p>
+This document describes the design and implementation of the
+<a href="https://github.com/emauton/basic_metrics">basic_metrics</a>
+<a href="http://www.erlang.org/doc/design_principles/applications.html">Erlang/OTP application</a>.</p>
+
+<p>The intended audience is Erlang programmers. We assume a basic understanding of
+Erlang/OTP application structure and
+<a href="http://www.erlang.org/doc/design_principles/des_princ.html">design principles</a>.
+A suitable background should be provided by
+<a href="http://www.manning.com/logan/">Erlang and OTP in Action</a>
+by Logan et al.</p>
+
+<h3><a name="Overview">Overview</a></h3><p>
+Erlang applications require metrics so we don't "fly blind" when developing
+and operating our systems.</p>
+
+<p>We accomplish this using
+<a href="https://github.com/Feuerlabs/exometer">exometer</a> to export metrics
+into <a href="https://www.hostedgraphite.com">Hosted Graphite</a>.</p>
+
+<p>Rather than using exometer's static configuration options, we build
+everything dynamically. This is a little verbose, but clear and self-contained. </p>
+
+<p>Once the application is included and started, you get the basic metrics listed
+in <a href="basic_metrics.html#vm-0"><code>basic_metrics:vm/0</code></a> and <a href="basic_metrics_periodic.html"><code>basic_metrics_periodic</code></a>.</p>
+
+<p>You can then dynamically create and export your own application metrics using
+<a href="basic_metrics.html#counter-2"><code>basic_metrics:counter/2</code></a>, <a href="basic_metrics.html#gauge-2"><code>basic_metrics:gauge/2</code></a>, and
+<a href="basic_metrics.html#histogram-2"><code>basic_metrics:histogram/2</code></a>.</p>
+
+<p>For example,</p>
+
+<pre>
+basic_metrics:histogram([api, latency, put], timer:now_diff(os:timestamp(), T0))
+</pre>
+
+<p>This module depends upon and uses
+<a href="https://github.com/ferd/recon">recon</a> for additional metrics
+useful in production. See also
+<a href="http://www.erlang-in-anger.com/">Erlang in Anger</a>.</p>
+
+<p>The exometer integration is based on Brian Troutwine's notes in
+<a href="http://goo.gl/Xo4fWi">
+Monitoring with Exometer: An Ongoing Love Story</a>. For lots more detail
+on using exometer, see that article and the exometer documentation.</p>
+
+<h3><a name="Processes">Processes</a></h3><p>
+<code>basic_metrics</code> presents an
+<a href="http://www.erlang.org/doc/design_principles/des_princ.html">Erlang/OTP supervision hierarchy</a>
+with the following shape:
+<center><img src="basic_metrics_processes.png" width="300" alt="basic_metrics process tree diagram"></center>
+(<a href="https://docs.google.com/drawings/d/1LoVhZXvbzQwl567lLCrFunmkMNlpor9bIDHeLiTDpcc/edit">source</a>)</p>
+
+<p>The <strong>bold</strong> components correspond to modules provided by the
+<code>basic_metrics</code> application:</p>
+
+<h4><a name="basic_metrics_app">basic_metrics_app</a></h4><p>
+The callback module for the <code>basic_metrics</code>
+<a href="http://www.erlang.org/doc/design_principles/applications.html">application master</a>.
+Initializes <a href="basic_metrics.html"><code>basic_metrics</code></a> and starts <a href="basic_metrics_sup.html"><code>basic_metrics_sup</code></a>.</p>
+
+<h4><a name="basic_metrics_sup">basic_metrics_sup</a></h4><p>
+The main application supervisor. Manages <a href="basic_metrics_periodic.html"><code>basic_metrics_periodic</code></a>.</p>
+
+<h4><a name="basic_metrics_periodic">basic_metrics_periodic</a></h4><p>
+Manages regular update and export of Erlang VM metrics (e.g. distribution
+socket and scheduler stats) which are dynamic or don't fit well into the
+existing exometer "function" exports in <a href="basic_metrics.html#vm-0"><code>basic_metrics:vm/0</code></a>.</p>
+
+<h3><a name="Additional_modules">Additional modules</a></h3>
+
+<h4><a name="basic_metrics">basic_metrics</a></h4><p>
+Simple wrapper for <code>exometer</code> to export useful metrics from an Erlang VM. Handles
+setting up Graphite reporting and dynamic addition, subscription and updates for
+several exometer entry types.</p>
+
+<h4><a name="basic_metrics_riak">basic_metrics_riak</a></h4>
+A "plugin" for basic_metrics to export metrics from <code>riak</code> subsystems.
+
+<hr>
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Mar 10 2016, 16:03:47.</i></p>
+</body>
+</html>

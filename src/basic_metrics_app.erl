@@ -16,7 +16,7 @@
     {error, Reason :: term()}.
 start(_, _) ->
     ok = basic_metrics:init(),
-    ok = basic_metrics:vm(),
+    ok = basic_metrics:vm(subscribe),
     basic_metrics_sup:start_link().
 
 %% @private

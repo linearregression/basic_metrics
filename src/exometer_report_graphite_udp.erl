@@ -55,16 +55,14 @@
 -spec exometer_init(exometer_report:options()) -> exometer_report:callback_result().
 exometer_init(Opts) ->
     ok = lager:notice("action=init"),
-    ok = lager:info("action=~s_init ~s", [?MODULE, Opts]),
     HostIp = get_opt(host_ip, Opts),
     {ok, HostIp1} = inet:parse_address(HostIp),
     Port = get_opt(port, Opts, ?DEFAULT_PORT),
     %Port1 = erlang:list_to_integer(Port),
     %Protocol = erlang:to_atom(protocol, Opts, udp),
-    Protocol = udp,
+    Protocol = get_opt(protocol, Opts, udp),
     MetricPath = get_opt(metric_path, Opts, undefined),
     RetryFailedMetrics = get_opt(retry_failed_metrics, Opts),
-    %Interval = erlang:to_integer(interval, Opts, 1000),
     SendTimeout = get_opt(retry_failed_metrics, Opts),
     ReconnectInterval =get_opt(reconnect, Opts),
     {ok, Socket} = connect(),
@@ -78,7 +76,8 @@ exometer_init(Opts) ->
            reconnect = ReconnectInterval
     }}.
 
-exometer_report(Metric, DataPoint, Extra, Value, State) ->
+
+exometer_report(Metric, DataPoint, Extra, Value, State) -> 
  %   Key = metric_key(Metric, DataPoint),
  %   Name = name(Pfx, Metric, DataPoint),
  %   Type = counter,
@@ -87,8 +86,8 @@ exometer_report(Metric, DataPoint, Extra, Value, State) ->
   %             {ok, T} -> T;
   %             error -> gauge
   %         end,
- %   Line = make_metric_payload(Name, Value, Type),
- %   {ok, State} = post_metric(Line, State),
+    Line = make_metric_payload(Name, Value, Type),
+    {ok, State} = post_metric(Line, State),
     {ok, State}.
 
 -spec exometer_subscribe(exometer_report:reporter_name(), exometer_report:metric(), exometer_report:datapoints(), exometer_report:interval(), exometer_report:extra()) ->
@@ -167,9 +166,7 @@ timestamp() ->
 %% @end
 connect() -> gen_udp:open(0).
 connect(udp, State) ->
-    % TODO
-    Opts = [],
-    case gen_udp:open(0, Opts) of
+    case gen_udp:open(0, ?DEFAULT_UDP_OPTS) of
         {ok, Socket} ->
             {ok, #state{socket=Socket}};
         {error, Reason} ->
@@ -200,7 +197,7 @@ make_metric_payload(Path, Value, TimeStamp) ->
 %    Delimiter = <<" ">>,
 %    <<Path1/binary, Delimiter/binary, Value1/binary, Delimiter/binary, TimeStamp1/binary>>.
 
-post_metric([], State) ->
+post_metric(<<>>, State) ->
     {ok, State};
 post_metric(Line, State) ->
     case gen_udp:send(State#state.socket, State#state.host_ip, State#state.port, Line) of

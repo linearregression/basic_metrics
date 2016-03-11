@@ -4,7 +4,7 @@
 %%% Handles setting up Graphite reporting and dynamic addition, subscription
 %%% and updates for several exometer entry types.
 -module(basic_metrics).
--export([init/0, counter/2, gauge/2, histogram/2, fast_counter/2, spiral/1, vm/0]).
+-export([init/0, counter/2, gauge/2, histogram/2, fast_counter/2, spiral/1, vm/1]).
 -ignore_xref([init/0, counter/2, gauge/2, histogram/2, vm/0]).
 
 -define(REPORT_INTERVAL, 5000).
@@ -173,27 +173,18 @@ init() ->
 %%     </p>
 %% </li>
 %% </ul>
--spec vm() ->
+-spec vm(create|subscribe) ->
     ok.
-vm() ->
+vm(create) ->
     % VM memory.
-    DefaultReporter = get_default_reporter(),
     ok = exometer:new([erlang, memory],
                       {function, erlang, memory, ['$dp'], value,
                        [total, processes, system, atom, binary, ets]}),
-    ok = exometer_report:subscribe(DefaultReporter ,
-                                   [erlang, memory],
-                                   [total, processes, system, atom, binary,
-                                    ets], ?REPORT_INTERVAL, [], true),
 
     % Recon alloc.
     ok = exometer:new([recon, alloc],
                       {function, recon_alloc, memory, ['$dp'], value,
                        [used, allocated, unused, usage]}),
-    ok = exometer_report:subscribe(DefaultReporter ,
-                                   [recon, alloc],
-                                   [used, allocated, unused, usage], ?REPORT_INTERVAL,
-                                   [], true),
 
     % Recon alloc types.
     ok = exometer:new([recon, alloc, types],
@@ -202,6 +193,35 @@ vm() ->
                        [binary_alloc, driver_alloc, eheap_alloc,
                         ets_alloc, fix_alloc, ll_alloc, sl_alloc,
                         std_alloc, temp_alloc]}),
+
+    % System process & port counts.
+    ok = exometer:new([erlang, system],
+                      {function, erlang, system_info, ['$dp'], value,
+                       [process_count, port_count]}),
+
+    % VM statistics.
+    ok = exometer:new([erlang, statistics],
+                      {function, erlang, statistics, ['$dp'], value,
+                       [run_queue]}),
+
+    ok = exometer:new([erlang, gc],
+                      {function, erlang, statistics, [garbage_collection],
+                       match, {total_coll, rec_wrd, '_'}}),
+
+
+    ok = exometer:new([erlang, io],
+                      {function, erlang, statistics, [io], match,
+                       {{'_', input}, {'_', output}}});
+vm(subscribe) ->
+    % VM memory.
+    DefaultReporter = get_default_reporter(),
+    % VM memory.
+    ok = exometer_report:subscribe(DefaultReporter ,
+                                   [recon, alloc],
+                                   [used, allocated, unused, usage], ?REPORT_INTERVAL,
+                                   [], true),
+
+    % Recon alloc.
     ok = exometer_report:subscribe(DefaultReporter ,
                                    [recon, alloc, types],
                                    [binary_alloc, driver_alloc, eheap_alloc,
@@ -210,35 +230,21 @@ vm() ->
                                    [], true),
 
     % System process & port counts.
-    ok = exometer:new([erlang, system],
-                      {function, erlang, system_info, ['$dp'], value,
-                       [process_count, port_count]}),
     ok = exometer_report:subscribe(DefaultReporter ,
                                    [erlang, system],
                                    [process_count, port_count], ?REPORT_INTERVAL,
                                    [], true),
-
     % VM statistics.
-    ok = exometer:new([erlang, statistics],
-                      {function, erlang, statistics, ['$dp'], value,
-                       [run_queue]}),
     ok = exometer_report:subscribe(DefaultReporter ,
                                    [erlang, statistics],
                                    [run_queue], ?REPORT_INTERVAL, [], true),
-
-    ok = exometer:new([erlang, gc],
-                      {function, erlang, statistics, [garbage_collection],
-                       match, {total_coll, rec_wrd, '_'}}),
     ok = exometer_report:subscribe(DefaultReporter ,
                                    [erlang, gc],
                                    [total_coll, rec_wrd], ?REPORT_INTERVAL, [], true),
-
-    ok = exometer:new([erlang, io],
-                      {function, erlang, statistics, [io], match,
-                       {{'_', input}, {'_', output}}}),
     ok = exometer_report:subscribe(DefaultReporter ,
                                    [erlang, io],
-                                   [input, output], ?REPORT_INTERVAL, [], true).
+                                   [input, output], ?REPORT_INTERVAL, [], true);
+vm(Arg) -> {error, {Arg, badarg}}.
 
 get_default_reporter() ->
     application:get_env(?APPLICATION, default_metrics_reporter, undefined).

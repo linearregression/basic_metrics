@@ -29,15 +29,15 @@
 -define(DEFAULT_UDP_OPTS,[]).
 
 -record(state, {
-          socket = undefined,
-          host_ip = undefined,
-          port = ?DEFAULT_PORT,
-          protocol = udp,
-          path = undefined,
-          retry_failed_metrics = false,
-          interval = 1000,
-          send_timeout = 5000,
-          reconnect = 5000
+          socket = undefined :: undefined | pid(),
+          host_ip = undefined :: undefined | inet:ip(),
+          port = ?DEFAULT_PORT :: port(),
+          protocol = udp :: udp | tcp,
+          path = undefined :: undefined | list(),
+          retry_failed_metrics = false :: boolean(),
+          interval = 1000 :: pos_integer(),
+          send_timeout = 5000 :: pos_integer(),
+          reconnect = 5000 :: pos_integer()
        }).
 
 -type mod_state() :: #state{}.
